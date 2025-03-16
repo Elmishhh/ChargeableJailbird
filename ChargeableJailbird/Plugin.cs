@@ -61,7 +61,6 @@ namespace ChargeableJailbird
                     Logger.LogError("JAILBIRD ITEM IS NULL");
                     return;
                 }
-
                 ChargeableJailbird.Behaviours.ChargeableJailbird jbitem = jailbirditemprops.spawnPrefab.AddComponent<Behaviours.ChargeableJailbird>();
                 jbitem.itemProperties = jailbirditemprops;
                 jbitem.grabbable = true;
@@ -79,7 +78,6 @@ namespace ChargeableJailbird
                 jailbirditemprops.batteryUsage = 0;
                 jailbirditemprops.itemIsTrigger = true;
 
-
                 jailbirditemprops.positionOffset = new Vector3(0, 0, -0.2f);
                 jailbirditemprops.rotationOffset = new Vector3(270, 110, 0);
             }
@@ -88,7 +86,7 @@ namespace ChargeableJailbird
             TerminalNode node = ScriptableObject.CreateInstance<TerminalNode>();
             node.clearPreviousText = true;
             node.displayText = "???";
-            Items.RegisterShopItem(jailbirditemprops, null, null, node, 500);
+            Items.RegisterShopItem(jailbirditemprops, null, null, node, 300);
             LethalLib.Modules.NetworkPrefabs.RegisterNetworkPrefab(jailbirditemprops.spawnPrefab);
 
             Logger.LogInfo("successfully set-up item");

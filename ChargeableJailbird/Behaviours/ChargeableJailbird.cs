@@ -43,6 +43,16 @@ namespace ChargeableJailbird.Behaviours
         {
             base.Start();
             blueGlow = transform.Find("jailbird/Mesh_Jailbird/blue_glow").gameObject;
+            insertedBattery.charge = 1;
+            Plugin.Logger.LogMessage("new jailbird created");
+        }
+        public override void GrabItem()
+        {
+            base.GrabItem();
+            if (insertedBattery.charge == 0.5)
+            {
+                insertedBattery.charge = 0.001f;
+            }
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)
@@ -83,23 +93,15 @@ namespace ChargeableJailbird.Behaviours
             reelingUpCoroutine = null;
         }
 
-        [ServerRpc]
-        public void ReelUpSFXServerRpc()
-        {
-            ReelUpSFXClientRpc();
-        }
-
-        [ClientRpc]
-        public void ReelUpSFXClientRpc()
-        {
-            jailbirdAudio.PlayOneShot(reelUp);
-        }
-
         public override void DiscardItem()
         {
             if (playerHeldBy != null)
             {
                 playerHeldBy.activatingItem = false;
+            }
+            if (insertedBattery.charge < 0.5f)
+            {
+                insertedBattery.charge = 0.5f;
             }
             base.DiscardItem();
         }
@@ -131,7 +133,7 @@ namespace ChargeableJailbird.Behaviours
                 previousPlayerHeldBy.twoHanded = false;
                 objectsHitByShovel = Physics.SphereCastAll(previousPlayerHeldBy.gameplayCamera.transform.position + previousPlayerHeldBy.gameplayCamera.transform.right * -0.35f, 0.8f, previousPlayerHeldBy.gameplayCamera.transform.forward, 1.5f, shovelMask, QueryTriggerInteraction.Collide);
                 objectsHitByShovelList = objectsHitByShovel.OrderBy((RaycastHit x) => x.distance).ToList();
-                List<EnemyAI> list = new List<EnemyAI>();
+                List<EnemyAI> enemiesHitList = new List<EnemyAI>();
                 for (int i = 0; i < objectsHitByShovelList.Count; i++)
                 {
                     if (objectsHitByShovelList[i].transform.gameObject.layer == 8 || objectsHitByShovelList[i].transform.gameObject.layer == 11)
@@ -164,7 +166,7 @@ namespace ChargeableJailbird.Behaviours
                             EnemyAICollisionDetect component2 = objectsHitByShovelList[i].transform.GetComponent<EnemyAICollisionDetect>();
                             if (component2 != null)
                             {
-                                if (!(component2.mainScript == null) && !list.Contains(component2.mainScript))
+                                if (!(component2.mainScript == null) && !enemiesHitList.Contains(component2.mainScript))
                                 {
                                     goto IL_02ff;
                                 }
@@ -182,10 +184,11 @@ namespace ChargeableJailbird.Behaviours
                             goto end_IL_0288;
                         IL_02ff:
                             bool flag4 = component.Hit(shovelHitForce, forward, previousPlayerHeldBy, playHitSFX: true, 1);
-                            HitEnemyWithShovelServerRpc();
                             if (flag4 && component2 != null)
                             {
-                                list.Add(component2.mainScript);
+                                enemiesHitList.Add(component2.mainScript);
+                                if (shovelHitForce == 3) { StunEnemiesServerRpc(component2.mainScript.NetworkObjectId); }
+                                HitEnemyWithShovelServerRpc();
                             }
                             if (!flag2)
                             {
@@ -214,18 +217,6 @@ namespace ChargeableJailbird.Behaviours
             }
         }
 
-        [ServerRpc]
-        public void HitShovelServerRpc(int hitSurfaceID)
-        {
-            HitShovelClientRpc(hitSurfaceID);
-        }
-
-        [ClientRpc]
-        public void HitShovelClientRpc(int hitSurfaceID)
-        {
-            HitSurfaceWithShovel(hitSurfaceID);
-        }
-
         private void HitSurfaceWithShovel(int hitSurfaceID)
         {
             try
@@ -239,6 +230,40 @@ namespace ChargeableJailbird.Behaviours
             }
         }
 
+        public void OnJailbirdHit()
+        {
+            if (shovelHitForce == 3)
+            {
+                insertedBattery.charge = 0.001f;
+                shovelHitForce = 1;
+                blueGlow.SetActive(false);
+            }
+        }
+        public override void ChargeBatteries()
+        {
+            base.ChargeBatteries();
+            if (insertedBattery.charge == 1)
+            {
+                shovelHitForce = 3;
+                blueGlow.SetActive(true);
+            }
+        }
+        public void TryStunEnemy(ulong enemyID)
+        {
+            RoundManager.Instance.RefreshEnemiesList();
+            foreach (EnemyAI spawnedEnemy in RoundManager.Instance.SpawnedEnemies)
+            {
+                if (spawnedEnemy.NetworkObjectId == enemyID)
+                {
+                    Plugin.Logger.LogMessage($"found enemy with id {enemyID}");
+                    spawnedEnemy.SetEnemyStunned(true, 4.5f);
+                    return;
+                }
+            }
+            Plugin.Logger.LogError($"could not find enemy with id {enemyID}");
+        }
+
+        #region jailbirdHitRPCs
         [ServerRpc]
         public void HitEnemyWithShovelServerRpc()
         {
@@ -250,18 +275,44 @@ namespace ChargeableJailbird.Behaviours
         {
             OnJailbirdHit();
         }
+        #endregion
+        #region surfaceHitRPCs
+        [ServerRpc]
+        public void HitShovelServerRpc(int hitSurfaceID)
+        {
+            HitShovelClientRpc(hitSurfaceID);
+        }
 
-        public void OnJailbirdHit()
+        [ClientRpc]
+        public void HitShovelClientRpc(int hitSurfaceID)
         {
-            insertedBattery.charge = 0.001f;
-            shovelHitForce = 1;
-            blueGlow.SetActive(false);
+            HitSurfaceWithShovel(hitSurfaceID);
         }
-        public override void ChargeBatteries()
+        #endregion
+        #region reelupSFXRPCs
+        [ServerRpc]
+        public void ReelUpSFXServerRpc()
         {
-            base.ChargeBatteries();
-            shovelHitForce = 3;
-            blueGlow.SetActive(true);
+            ReelUpSFXClientRpc();
         }
+
+        [ClientRpc]
+        public void ReelUpSFXClientRpc()
+        {
+            jailbirdAudio.PlayOneShot(reelUp);
+        }
+        #endregion
+        #region stunenemiesRPCs
+        [ServerRpc]
+        public void StunEnemiesServerRpc(ulong enemyID)
+        {
+            StunEnemiesClientRpc(enemyID);
+        }
+        [ClientRpc]
+        public void StunEnemiesClientRpc(ulong enemyID)
+        {
+            TryStunEnemy(enemyID);
+        }
+        #endregion
     }
 }
