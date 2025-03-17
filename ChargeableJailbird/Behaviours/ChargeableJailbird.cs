@@ -25,9 +25,9 @@ namespace ChargeableJailbird.Behaviours
 
         private List<RaycastHit> objectsHitByShovelList = new List<RaycastHit>();
 
-        public AudioClip reelUp;
+        public AudioClip reelUpSFX;
 
-        public AudioClip swing;
+        public AudioClip[] swingSFX = new AudioClip[2];
 
         public AudioClip[] hitSFX;
 
@@ -80,10 +80,12 @@ namespace ChargeableJailbird.Behaviours
             playerHeldBy.twoHanded = true;
             playerHeldBy.playerBodyAnimator.ResetTrigger("shovelHit");
             playerHeldBy.playerBodyAnimator.SetBool("reelingUp", value: true);
-            jailbirdAudio.PlayOneShot(reelUp);
+            jailbirdAudio.PlayOneShot(reelUpSFX);
             ReelUpSFXServerRpc();
             yield return new WaitForSeconds(0.35f);
             yield return new WaitUntil(() => !isHoldingButton || !isHeld);
+            SwingSFXServerRpc();
+            yield return new WaitForSeconds(shovelHitForce == 3 ? 0.15f : 0);
             SwingShovel(!isHeld);
             yield return new WaitForSeconds(0.13f);
             yield return new WaitForEndOfFrame();
@@ -111,7 +113,6 @@ namespace ChargeableJailbird.Behaviours
             previousPlayerHeldBy.playerBodyAnimator.SetBool("reelingUp", value: false);
             if (!cancel)
             {
-                jailbirdAudio.PlayOneShot(swing);
                 previousPlayerHeldBy.UpdateSpecialAnimationValue(specialAnimation: true, (short)previousPlayerHeldBy.transform.localEulerAngles.y, 0.4f);
             }
         }
@@ -299,7 +300,20 @@ namespace ChargeableJailbird.Behaviours
         [ClientRpc]
         public void ReelUpSFXClientRpc()
         {
-            jailbirdAudio.PlayOneShot(reelUp);
+            jailbirdAudio.PlayOneShot(reelUpSFX);
+        }
+        #endregion
+        #region swingSFXRPCs
+        [ServerRpc]
+        public void SwingSFXServerRpc()
+        {
+            SwingSFXClientRpc();
+        }
+
+        [ClientRpc]
+        public void SwingSFXClientRpc()
+        {
+            jailbirdAudio.PlayOneShot(swingSFX[shovelHitForce == 3 ? 0 : 1]);
         }
         #endregion
         #region stunenemiesRPCs

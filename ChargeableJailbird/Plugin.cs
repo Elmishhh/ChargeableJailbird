@@ -64,22 +64,13 @@ namespace ChargeableJailbird
                 ChargeableJailbird.Behaviours.ChargeableJailbird jbitem = jailbirditemprops.spawnPrefab.AddComponent<Behaviours.ChargeableJailbird>();
                 jbitem.itemProperties = jailbirditemprops;
                 jbitem.grabbable = true;
+                jbitem.reelUpSFX = bundle.LoadAsset<AudioClip>("ShovelReelUp");
+                jbitem.swingSFX[0] = bundle.LoadAsset<AudioClip>("Jailbirdswing1");
+                jbitem.swingSFX[1] = bundle.LoadAsset<AudioClip>("ShovelSwing");
                 jbitem.hitSFX = new AudioClip[1];
                 jbitem.hitSFX[0] = bundle.LoadAsset<AudioClip>("Normal_Hit");
                 jbitem.jailbirdAudio = jailbirditemprops.spawnPrefab.transform.GetComponent<AudioSource>();
-                jbitem.jailbirdAudio.spatialBlend = 0.8f;
                 jbitem.jailbirdAudio.spatialize = true;
-
-                jailbirditemprops.twoHandedAnimation = true;
-                jailbirditemprops.grabAnim = "HoldLung";
-                jailbirditemprops.holdButtonUse = true;
-
-                jailbirditemprops.requiresBattery = true;
-                jailbirditemprops.batteryUsage = 0;
-                jailbirditemprops.itemIsTrigger = true;
-
-                jailbirditemprops.positionOffset = new Vector3(0, 0, -0.2f);
-                jailbirditemprops.rotationOffset = new Vector3(270, 110, 0);
             }
             Utilities.FixMixerGroups(jailbirditemprops.spawnPrefab);
 
